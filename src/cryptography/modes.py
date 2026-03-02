@@ -1,6 +1,6 @@
 from enum import Enum, auto
 
-from interfaces import ISymmetricBlockEncryption
+from .interfaces import ISymmetricBlockEncryption
 
 class Cipher_Mode(Enum):
     ECB = auto()
@@ -16,7 +16,6 @@ class SymmetricBlockCipherAction(ISymmetricBlockEncryption):
     def __init__(
         self,
         cipher_mode: Cipher_Mode,
-        #padding_mode,
         init_vector: bytes,
         block_size: int,
         *args
@@ -151,7 +150,7 @@ class SymmetricBlockCipherAction(ISymmetricBlockEncryption):
         tmp_vec = bytearray(self._iv)
         output = bytearray(len(value))
         for i in range(0, len(value), b):
-            decrypted_tmp_vec = self._decrypt_block(bytes(tmp_vec))
+            decrypted_tmp_vec = self._encrypt_block(bytes(tmp_vec))
             chunk = value[i:i+b]
             p = bytes(a ^ k for a, k in zip(chunk, decrypted_tmp_vec))
             output[i:i+len(chunk)] = p
@@ -164,7 +163,7 @@ class SymmetricBlockCipherAction(ISymmetricBlockEncryption):
         output = bytearray(len(value))
         for i in range(0, len(value), b):
             tmp_vec[:] = self._encrypt_block(bytes(tmp_vec))
-            output[i:i+b] = bytes(a ^ b for a, b in zip(tmp_vec, value[i:i+b]))
+            output[i:i+b] = bytes(x ^ y for x, y in zip(tmp_vec, value[i:i+b]))
         return output
     
     def _ctr_xor(self, value: bytes):

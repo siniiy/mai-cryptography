@@ -3,16 +3,16 @@ from typing import List
 from pathlib import Path
 
 # 2.1
-class IRoundKeyGen(ABC): 
-    @abstractmethod
+class IRoundKeyGen(ABC):
     @staticmethod
+    @abstractmethod
     def expand_key(input_key: bytes) -> List[bytes]:
         pass
 
 #2.2
 class IRoundKeyEncryption(ABC):
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def encrypt(value: bytes, round_key: bytes) -> bytes:
         pass
     
@@ -26,12 +26,12 @@ class ISymmetricBlockEncryption(ABC):
     def decrypt(self, value: bytes, result: bytearray) -> bytes:
         pass
     
-    @abstractmethod
     @property
+    @abstractmethod
     def key(self):
         pass
     
-    @abstractmethod
     @key.setter
+    @abstractmethod
     def key(self, key: bytes):
         pass

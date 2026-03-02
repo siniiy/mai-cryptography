@@ -1,12 +1,12 @@
 from typing import List
-from interfaces import (
+from .interfaces import (
         IRoundKeyGen,
         IRoundKeyEncryption,
         ISymmetricBlockEncryption
     )
 
 class FeistelNet:
-    def init(self, round_keygen: IRoundKeyGen, encrypter: IRoundKeyEncryption):
+    def __init__(self, round_keygen: IRoundKeyGen, encrypter: IRoundKeyEncryption):
         self._key = None
         self._round_keys = None
         self._round_keys_gen = round_keygen
@@ -22,15 +22,19 @@ class FeistelNet:
             
     def _encrypt_block(self, value: bytes, decrypt: bool = False):
         if decrypt: round_keys = self._round_keys[::-1]
-        L, R = value[:len(value) / 2], value[-(len(value) / 2):]
+        else: round_keys = self._round_keys
+        
+        half_len = len(value) // 2
+        L, R = value[:half_len], value[half_len:]
+        
         for i in range(self._n_rounds):
-            tmp_L = L.copy()
-            L = R ^ self._feistel_func(L, round_keys[i])
-            R = tmp_L
+            f_result = self._feistel_func(R, round_keys[i])
+            new_R = bytes(a ^ b for a, b in zip(L, f_result))
+            L = R
+            R = new_R
         
-        R, L = L, R
-        
-        return bytes(L + R)
+        # Final swap: output is R16L16
+        return R + L
     
     def decrypt(self, value: bytes) -> bytes:
         if (self._round_keys is None or self._n_rounds is None or self._block_size is None):

@@ -6,9 +6,13 @@ Tests the DES implementation with known test vectors from FIPS 46-3
 
 import sys
 import os
+from pathlib import Path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from cryptography.des_implementation import Des
+from cryptography.demonstrator import FileCipher
+from cryptography.modes import Cipher_Mode
+from cryptography.paddings import Padding_Mode
 
 def test_des_vectors():
     """Test DES with known test vectors from FIPS 46-3"""
@@ -129,6 +133,121 @@ def test_round_trip():
     print("All round-trip tests PASSED! ✓")
     return True
 
+def test_file_encryption():
+    """Test file encryption/decryption with DES"""
+    print("\nFile Encryption Test")
+    print("=" * 50)
+    
+    project_root = Path(__file__).parent.parent
+    input_file = project_root / "data" / "hamster.png"
+    output_dir = project_root / "data" / "output"
+    encrypted_file = output_dir / "hamster_encrypted.bin"
+    decrypted_file = output_dir / "hamster_decrypted.png"
+    
+    if not input_file.exists():
+        print(f"⚠ Test file not found: {input_file}")
+        return False
+    
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    key = bytes.fromhex('0123456789ABCDEF')
+    iv = bytes.fromhex('1234567890ABCDEF')
+    
+    test_configs = [
+        ("ECB with PKCS7", Cipher_Mode.ECB, Padding_Mode.PKCS7),
+        ("CBC with PKCS7", Cipher_Mode.CBC, Padding_Mode.PKCS7),
+        ("PCBC with ANSI_X_923", Cipher_Mode.PCBC, Padding_Mode.ANSI_X_923),
+        ("CFB (no padding)", Cipher_Mode.CFB, Padding_Mode.Zeros),
+        ("OFB (no padding)", Cipher_Mode.OFB, Padding_Mode.Zeros),
+        ("CTR (no padding)", Cipher_Mode.CTR, Padding_Mode.Zeros),
+    ]
+    
+    all_passed = True
+    original_data = input_file.read_bytes()
+    
+    for name, mode, padding in test_configs:
+        print(f"\nTesting: {name}")
+        
+        try:
+            des = Des()
+            cipher = FileCipher(des, mode, padding, iv)
+            cipher.key = key
+            
+            cipher.encrypt_file(input_file, encrypted_file)
+            
+            cipher2 = FileCipher(Des(), mode, padding, iv)
+            cipher2.key = key
+            cipher2.decrypt_file(encrypted_file, decrypted_file)
+            
+            decrypted_data = decrypted_file.read_bytes()
+            
+            if original_data == decrypted_data:
+                print(f"  ✓ PASS - File integrity preserved")
+                print(f"  Original size: {len(original_data)} bytes")
+                print(f"  Encrypted size: {encrypted_file.stat().st_size} bytes")
+            else:
+                print(f"  ✗ FAIL - File corrupted")
+                print(f"  Original size: {len(original_data)} bytes")
+                print(f"  Decrypted size: {len(decrypted_data)} bytes")
+                all_passed = False
+                
+        except Exception as e:
+            print(f"  ✗ FAIL - Exception: {e}")
+            all_passed = False
+    
+    if all_passed:
+        print("\n✓ All file encryption tests PASSED!")
+    else:
+        print("\n✗ Some file encryption tests FAILED!")
+    
+    return all_passed
+
+def test_bytes_encryption():
+    """Test bytes encryption/decryption with different modes"""
+    print("\nBytes Encryption Test")
+    print("=" * 50)
+    
+    key = bytes.fromhex('FEDCBA9876543210')
+    iv = bytes.fromhex('0F1E2D3C4B5A6978')
+    
+    test_data = b"Hello, DES encryption! This is a test message."
+    
+    test_configs = [
+        ("ECB + PKCS7", Cipher_Mode.ECB, Padding_Mode.PKCS7),
+        ("CBC + PKCS7", Cipher_Mode.CBC, Padding_Mode.PKCS7),
+        ("OFB", Cipher_Mode.OFB, Padding_Mode.Zeros),
+        ("CTR", Cipher_Mode.CTR, Padding_Mode.Zeros),
+    ]
+    
+    all_passed = True
+    
+    for name, mode, padding in test_configs:
+        print(f"\nTesting: {name}")
+        
+        try:
+            des = Des()
+            cipher = FileCipher(des, mode, padding, iv)
+            cipher.key = key
+            
+            encrypted = cipher.encrypt_bytes(test_data)
+            decrypted = cipher.decrypt_bytes(encrypted)
+            
+            if test_data == decrypted:
+                print(f"  ✓ PASS")
+                print(f"  Original: {test_data[:30]}...")
+                print(f"  Encrypted length: {len(encrypted)} bytes")
+            else:
+                print(f"  ✗ FAIL - Data mismatch")
+                print(f"  Expected: {test_data}")
+                print(f"  Got: {decrypted}")
+                all_passed = False
+                
+        except Exception as e:
+            print(f"  ✗ FAIL - Exception: {e}")
+            all_passed = False
+    
+    return all_passed
+
 if __name__ == '__main__':
     try:
         # Run test vectors
@@ -137,15 +256,23 @@ if __name__ == '__main__':
         # Run round-trip tests
         roundtrip_passed = test_round_trip()
         
-        if vectors_passed and roundtrip_passed:
-            print("\n🎉 All DES tests completed successfully!")
+        # Run file encryption tests
+        file_passed = test_file_encryption()
+        
+        # Run bytes encryption tests
+        bytes_passed = test_bytes_encryption()
+        
+        if vectors_passed and roundtrip_passed and file_passed and bytes_passed:
+            print("\n" + "=" * 50)
+            print(" All DES tests completed successfully!")
             sys.exit(0)
         else:
-            print("\n❌ Some DES tests failed!")
+            print("\n" + "=" * 50)
+            print(" Some DES tests failed!")
             sys.exit(1)
             
     except Exception as e:
-        print(f"\n💥 Error during testing: {e}")
+        print(f"\n Error during testing: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

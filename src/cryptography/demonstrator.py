@@ -6,15 +6,14 @@ from .interfaces import ISymmetricBlockEncryption
 from .modes import Cipher_Mode, SymmetricBlockCipherAction
 from .paddings import Padding_Mode, PaddingAction
 
-BLOCK_SIZE = 8
-
 class FileCipher:
     def __init__(
         self,
         cipher: ISymmetricBlockEncryption,
         mode: Cipher_Mode,
         padding: Padding_Mode,
-        iv: Optional[bytes] = None
+        iv: Optional[bytes] = None,
+        block_size: int = 8
     ):
         if not isinstance(mode, Cipher_Mode):
             raise TypeError("mode must be a Cipher_Mode enum value")
@@ -24,7 +23,7 @@ class FileCipher:
         self._cipher = cipher
         self._mode = mode
         self._padding_mode = padding
-        self._block_size = BLOCK_SIZE
+        self._block_size = block_size
         
         if iv is None:
             self._iv = os.urandom(self._block_size)
